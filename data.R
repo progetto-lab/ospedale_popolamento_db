@@ -43,13 +43,19 @@ gen_loader_fn("lc_", load_txt, c(
   "paese",
   "nome_azienda",
   "nome_farmaco",
-  "nome_commerciale"
+  "nome_commerciale",
+  "principio_attivo",
+  "divisione_ospedaliera",
+  "regione_ospedale",
+  "dosaggio_farmaco",
+  "modalita_somministrazione"
 ))
 
 # ldf_provincia() loads data/provincia.csv as a data frame, etc.
 gen_loader_fn("ldf_", load_csv, c(
   "comune",
   "provincia",
+  "provincia_adiacente",
   "ulss"
 ))
 

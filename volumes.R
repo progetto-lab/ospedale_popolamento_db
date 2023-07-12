@@ -8,7 +8,7 @@ vol_paziente_fuori_sede <- 25000
 vol_paziente_in_sede <- vol_paziente - vol_paziente_fuori_sede
 vol_ricovero <- 300000
 vol_diagnosi <- 450000
-vol_terapie <- 500000
+vol_terapia <- 500000
 vol_medico <- 200
 vol_farmaco <- 5000
 vol_ricoverato <- 250000

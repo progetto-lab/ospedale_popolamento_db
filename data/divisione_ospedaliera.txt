@@ -1,0 +1,30 @@
+emergenza
+cardiologia
+oncologia
+neurologia
+ortopedia
+radiologia
+chirurgia generale
+ginecologia e ostetricia
+pediatria
+medicina interna
+oculistica
+otorinolaringoiatria
+nefrologia
+gastroenterologia
+endocrinologia
+pneumologia
+dermatologia
+urologia
+odontoiatria
+psichiatria
+allergologia e immunologia
+genetica medica
+malattie infettive
+medicina fisica e riabilitazione
+anatomia patologica
+medicina del sonno
+medicina nucleare
+medicina trasfusionale
+medicina legale
+medicina palliativa
