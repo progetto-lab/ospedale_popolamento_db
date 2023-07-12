@@ -121,7 +121,7 @@ gen_ricovero <- function(paziente) {
   gen_periodo_ricovero <- function(dati_paziente) {
     # genera periodo ricovero paziente [per costruzione, vincolo data_fine >= data_inizio]
     data_inizio <- data_cutoff - sample(1:giorni_apertura, nrow(dati_paziente), replace=T, prob=dist_giorni)
-    data_fine <- data_inizio + as.integer(dati_paziente$durata_media + rnorm(nrow(dati_paziente), sd=3))
+    data_fine <- data_inizio + rpois(nrow(dati_paziente), lambda=dati_paziente$durata_media)
     data_fine[data_fine < data_inizio] = data_inizio[data_fine < data_inizio] + 1
 
     data.frame(data_inizio=data_inizio, data_fine=data_fine)
