@@ -239,31 +239,23 @@ gen_principio_attivo <- function(farmaco) {
 # distribuzione di farmaci della Bribera Farmaceuticals (o RxCorrupt?) prescritti in media, confrontati con quelli di un particolare medico
 gen_terapia <- function(ricovero, medico, farmaco) {
   gen_periodo_terapia <- function(dati_terapia) {
-    # data_inizio_ric < data_inizio < data_fine < data_fine_ric
-    in_corso <- is.na(dati_terapia$data_fine_ric)
-    n_in_corso <- sum(in_corso)
+    # ts_inizio_ric < data_inizio < data_fine < ts_fine_ric
+    in_corso <- is.na(dati_terapia$ts_fine_ric)
 
-    ts_fine <- as.POSIXct(dati_terapia$data_fine_ric + 1) - 1
-    ts_inizio <- as.POSIXct(dati_terapia$data_inizio_ric)
+    durata_ricovero <- as.numeric(difftime(
+      dati_terapia$ts_fine_ric[!in_corso],
+      dati_terapia$ts_inizio_ric[!in_corso],
+      units="secs"))
 
-    durata_ricovero <- as.numeric(difftime(ts_fine, ts_inizio, units="secs"))
-    index_ricovero <- 1:nrow(dati_terapia)
-
-    offs_inizio <- c()
-    offs_inizio[in_corso] <- rexp(n_in_corso, 0.5)
-    offs_inizio[!in_corso] <- vapply(index_ricovero[!in_corso],
-        function(i) { runif(1, min=1, max=(durata_ricovero[i]-1)) },
-        numeric(1))
-
-    offs_fine <- c()
-    offs_fine[in_corso] <- offs_inizio[in_corso] + rexp(n_in_corso, 0.5)
-    offs_fine[!in_corso] <- vapply(index_ricovero[!in_corso],
-        function(i) { runif(1, min=(offs_inizio[i]+1), max=durata_ricovero[i]) },
-        numeric(1))
+    offs_periodo <- matrix(nrow=nrow(dati_terapia), ncol=2)
+    offs_periodo[!in_corso,] <- random_intervals(
+      length(durata_ricovero), min=1, max=durata_ricovero, minsize=3600)
+    offs_periodo[in_corso,] <- random_intervals(
+      sum(in_corso), min=1, max=10*24*3600, minsize=3600)
 
     data.frame(
-      data_inizio=ts_inizio + offs_inizio,
-      data_fine=ts_inizio + offs_fine)
+      data_inizio=dati_terapia$ts_inizio_ric + offs_periodo[,1],
+      data_fine=dati_terapia$ts_inizio_ric + offs_periodo[,2])
   }
 
   medico_terapia <- sample(medico$cf, vol_terapia, replace=T)
@@ -284,8 +276,8 @@ gen_terapia <- function(ricovero, medico, farmaco) {
   ricovero_terapia = random_rows(ricovero, vol_terapia, replace=T)
   dati_terapia <- data.frame(
     ricovero=ricovero_terapia$codice_univoco,
-    data_inizio_ric=ricovero_terapia$data_inizio,
-    data_fine_ric=ricovero_terapia$data_fine,
+    ts_inizio_ric=as.POSIXct(ricovero_terapia$data_inizio),
+    ts_fine_ric=as.POSIXct(ricovero_terapia$data_fine+1)-1,
     prescritta_da_medico=medico_terapia,
     utilizza_farmaco=farmaco_terapia$nome_commerciale,
     dose_giornaliera=farmaco_terapia$dose_giornaliera_raccomandata) # (utilizza sempre dose raccomandata)
