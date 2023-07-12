@@ -17,6 +17,15 @@ random_int <- function(min, max) {
   return (sample(min:max, 1))
 }
 
+# random_intervals
+#   generate random invervals (matrix with col1=min,col2=max)
+#   in [min,max] range with a minimum size of minsize
+random_intervals <- function(n, min=0, max=1, minsize=0) {
+  start <- runif(n, min=min, max=(max-minsize))
+  end <- runif(n, min=(start+minsize), max=max)
+  matrix(c(start, end), ncol=2)
+}
+
 # random_rows
 #   pick count random rows from dataframe df
 #   (set replace=T to allow repetitions)
