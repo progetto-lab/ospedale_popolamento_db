@@ -15,7 +15,7 @@ vol_ricoverato <- 250000
 vol_diagnosticato <- 450000
 vol_svolgimento <- 500000
 vol_effetto_di <- 4500
-vol_terapia_per <- 650000
+vol_terapia_per <- 600000
 vol_diagnosticata_da <- 450000
 vol_prescritta_da <- 500000
 vol_utilizza <- 500000
