@@ -23,6 +23,13 @@ cfg_ric_ini <- 80
 cfg_decr_ric_multipli <- 0.9
 
 
+# numero di ICD10 distinti per patologie
+cfg_num_icd10 <- 5000
+
+# percentuale diagnosi gravi
+cfg_prob_grave <- 0.1
+
+
 #
 # utility functions based on config constants
 #

@@ -303,18 +303,58 @@ gen_terapia <- function(ricovero, medico, farmaco) {
 }
 
 gen_diagnosi <- function(ricovero, medico, terapia) {
-  # 1. per ogni ricovero, genera almeno una diagnosi, prima della prima terapia (se la terapia è presente)
-  # 2. genera altre diagnosi, collocate casualmente
+  dati_ricovero <- data.frame(
+    codice_univoco=ricovero$codice_univoco,
+    ts_inizio_ric=as.POSIXct(ricovero$data_inizio),
+    ts_fine_ric=as.POSIXct(ricovero$data_fine+1)-1)
+  dati_ricovero$durata_ric <- as.numeric(difftime(
+    dati_ricovero$ts_fine_ric,
+    dati_ricovero$ts_inizio_ric,
+    units="secs"))
+  dati_ricovero$durata_ric[is.na(dati_ricovero$durata_ric)] <- 10*24*3600
 
-  # TODO
+  # genera diagnosi iniziali (semplificazione: la prima diagnosi avviene
+  # sempre in concomitanza con l'inizio del ricovero)
+  diagnosi_iniziale <- data.frame(
+    ricovero=dati_ricovero$codice_univoco,
+    time_stamp=dati_ricovero$ts_inizio_ric,
+    effetto_di_terapia=NA)
+
+  # genera diagnosi aggiuntive
+  vol_diagnosi_secondarie <- vol_diagnosi - nrow(diagnosi_iniziale)
+  ric_diagnosi_secondarie <- random_rows(dati_ricovero, vol_diagnosi_secondarie, replace=T)
+  diagnosi_secondarie <- data.frame(
+    index=1:vol_diagnosi_secondarie,
+    ricovero=ric_diagnosi_secondarie$codice_univoco,
+    time_stamp=ric_diagnosi_secondarie$ts_inizio_ric + runif(
+      vol_diagnosi_secondarie, 1, ric_diagnosi_secondarie$durata_ric),
+    effetto_di_terapia=NA)
+
+  # selezione di alcune diagnosi secondarie per relazione effetto_di
+  diagnosi_terapia <- merge(diagnosi_secondarie, terapia, by="ricovero")
+  diagnosi_terapia <- diagnosi_terapia[diagnosi_terapia$time_stamp > diagnosi_terapia$data_inizio,]
+  diagnosi_secondarie$effetto_di_terapia[diagnosi_terapia$index] <- diagnosi_terapia$tnumero ## errore?
+  diagnosi_secondarie$index <- NULL
+
+  diagnosi_effetto <- which(!is.na(diagnosi_secondarie$effetto_di_terapia))
+  if (length(diagnosi_effetto) > vol_effetto_di) {
+    rimozione_effetto <- sample(diagnosi_effetto, length(diagnosi_effetto) - vol_effetto_di)
+    diagnosi_secondarie$effetto_di_terapia[rimozione_effetto] <- NA
+  }
+
+  # genera codici ICD10 patologie
+  icd_10 <- replicate( cfg_num_icd10, { random_str(ALPHANUM, 7) })
+
+  diagnosi_base <- rbind(diagnosi_iniziale, diagnosi_secondarie)
+  n_diagnosi <- nrow(diagnosi_base)
   data.frame(
-    ricovero = NULL,
-    dnumero = NULL,
-    effetto_di_terapia = NULL,
-    diagnosticato_da_medico = NULL,
-    icd10 = NULL,
-    time_stamp = NULL,
-    grave = NULL
+    ricovero=diagnosi_base$ricovero,
+    dnumero=1:n_diagnosi,
+    effetto_di_terapia=diagnosi_base$effetto_di_terapia,
+    diagnosticato_da_medico=sample(medico$cf, n_diagnosi, replace=T),
+    icd10=sample(icd_10, n_diagnosi, replace=T),
+    time_stamp=diagnosi_base$time_stamp,
+    grave=sample(c(F,T), n_diagnosi, replace=T, prob=c(1-cfg_prob_grave, cfg_prob_grave))
   )
 }
 
