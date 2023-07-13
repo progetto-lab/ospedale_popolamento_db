@@ -240,19 +240,14 @@ gen_principio_attivo <- function(farmaco) {
 gen_terapia <- function(ricovero, medico, farmaco) {
   gen_periodo_terapia <- function(dati_terapia) {
     # ts_inizio_ric < data_inizio < data_fine < ts_fine_ric
-    in_corso <- is.na(dati_terapia$ts_fine_ric)
-
     durata_ricovero <- as.numeric(difftime(
-      dati_terapia$ts_fine_ric[!in_corso],
-      dati_terapia$ts_inizio_ric[!in_corso],
+      dati_terapia$ts_fine_ric,
+      dati_terapia$ts_inizio_ric,
       units="secs"))
+    durata_ricovero[is.na(durata_ricovero)] <- 10*24*3600
 
-    offs_periodo <- matrix(nrow=nrow(dati_terapia), ncol=2)
-    offs_periodo[!in_corso,] <- random_intervals(
-      length(durata_ricovero), min=1, max=durata_ricovero, minsize=3600)
-    offs_periodo[in_corso,] <- random_intervals(
-      sum(in_corso), min=1, max=10*24*3600, minsize=3600)
-
+    offs_periodo <- random_intervals(
+      nrow(dati_terapia), min=1, max=durata_ricovero, minsize=3600)
     data.frame(
       data_inizio=dati_terapia$ts_inizio_ric + offs_periodo[,1],
       data_fine=dati_terapia$ts_inizio_ric + offs_periodo[,2])
