@@ -359,11 +359,15 @@ gen_diagnosi <- function(ricovero, medico, terapia) {
 }
 
 gen_terapia_per <- function(ricovero, terapia, diagnosi) {
-  # TODO
+  terapia_per <- merge(terapia, diagnosi, by="ricovero")
+  terapia_per <- terapia_per[terapia_per$time_stamp < terapia_per$data_inizio,]
+  terapia_per <- random_rows(terapia_per,
+    min(nrow(terapia_per), vol_terapia_per))
+
   data.frame(
-    ricovero = NULL,
-    tnumero = NULL,
-    dnumero = NULL
+    ricovero=terapia_per$ricovero,
+    tnumero=terapia_per$tnumero,
+    dnumero=terapia_per$dnumero
   )
 }
 
