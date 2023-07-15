@@ -9,7 +9,7 @@ sql_integer_max <- 2147483647
 # simulazione tasso di crescita lineare del numero di pazienti,
 # determinato a partire da numero di ricoveri (tabella volumi),
 # ricoveri giornalieri attuali e ricoveri giornalieri iniziali
-cfg_ric_fin <- 250 # da tabella delle frequenze
+cfg_ric_fin <- 300 # da tabella delle frequenze
 cfg_ric_ini <- 80
 
 
