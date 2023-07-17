@@ -31,16 +31,25 @@ wr_df("medico", df_medico)
 wr_df("farmaco", df_farmaco)
 wr_df("principio_attivo", df_principio_attivo)
 
-# while not strictly necessary, at the moment for simplicity
-# potentially interdependent tuples of terapia and diagnosi
-# are generated in conjunction, so it is necessary to use
-# a transaction to handle foreign key references
+# while not normally necessary, to simplify insertion of large, interdependent
+# sets of diagnosi/terapia, we initially remove the reference to terapia in
+# diagnosi, and add it back after inserting terapia
+df_diagnosi_ne <- df_diagnosi
+df_diagnosi_ne$effetto_di_terapia <- NA
+wr_df("diagnosi", df_diagnosi_ne)
+
 dbBegin(con)
+  # terapia_per must be inserted before terapia, to respect rel.12 constraint
+  wr_df("terapia_per", df_terapia_per)
   wr_df("terapia", df_terapia)
-  wr_df("diagnosi", df_diagnosi)
 dbCommit(con)
 
-wr_df("terapia_per", df_terapia_per)
+# add back effetto_di_terapia
+diagnosi_effetto <- df_diagnosi[!is.na(df_diagnosi$effetto_di_terapia),]
+for (i in 1:nrow(diagnosi_effetto)) {
+    dbExecute(con, "UPDATE diagnosi SET effetto_di_terapia=$1 WHERE ricovero=$2 AND dnumero=$3",
+              diagnosi_effetto[i, c("effetto_di_terapia", "ricovero", "dnumero")])
+}
 
 dbDisconnect(con)
 
