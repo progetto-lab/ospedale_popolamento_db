@@ -113,22 +113,20 @@ gen_ricovero <- function(paziente) {
   eta_paziente <- as.numeric(data_cutoff - paziente$data_nascita) / 365
   dati_paziente <- data.frame(
     paziente,
-    eta_paziente=eta_paziente,
-    durata_media=2.966408 - 0.1639684*eta_paziente + 0.003922258*eta_paziente^2 - 0.00001979411*eta_paziente^3,
-    fattore_richio=2.287047 + 0.9262761*eta_paziente - 0.0410491*eta_paziente^2 + 0.0006174624*eta_paziente^3 - 0.000002921158*eta_paziente^4
+    durata_media=256297.6512 - 14166.86976*eta_paziente + 338.88309119999997*eta_paziente^2 - 1.710211104*eta_paziente^3,
+    fattore_rischio=2.287047 + 0.9262761*eta_paziente - 0.0410491*eta_paziente^2 + 0.0006174624*eta_paziente^3 - 0.000002921158*eta_paziente^4
   )
 
   gen_periodo_ricovero <- function(dati_paziente) {
     # genera periodo ricovero paziente [per costruzione, vincolo data_fine >= data_inizio]
-    data_inizio <- data_cutoff - sample(1:giorni_apertura, nrow(dati_paziente), replace=T, prob=dist_giorni)
-    data_fine <- data_inizio + rpois(nrow(dati_paziente), lambda=dati_paziente$durata_media)
-    data_fine[data_fine < data_inizio] = data_inizio[data_fine < data_inizio] + 1
-
+    data_inizio <- (as.POSIXct(data_cutoff - sample(1:giorni_apertura, nrow(dati_paziente), replace=T, prob=dist_giorni)) +
+                      as.integer(runif(nrow(dati_paziente), min=0, max=24*3600)))
+    data_fine <- data_inizio + 1 + rpois(nrow(dati_paziente), lambda=dati_paziente$durata_media)
     data.frame(data_inizio=data_inizio, data_fine=data_fine)
   }
   chk_data_nascita <- function(dati_paziente, ricovero) {
-    # vincolo data_nascita paziente <= data_inizio ricovero
-    dati_paziente$data_nascita <= ricovero$data_inizio
+    # dev'essere data_nascita paziente <= data_inizio ricovero
+    as.POSIXct(dati_paziente$data_nascita) <= ricovero$data_inizio
   }
   chk_disgiunzione <- function(dati_paziente, ricoveroL, ricoveroR) {
     # vincolo disgiunzione ricoveri stesso paziente
@@ -148,8 +146,8 @@ gen_ricovero <- function(paziente) {
   if (any(inv1)) {
     total <- sum(inv1)
     sprintf("WARN: best effort ricovero1 incompleto, assegnazione statica %d elem", total)
-    periodo_ricovero1[inv1,"data_inizio"] <- paziente[inv1,"data_nascita"] + 10
-    periodo_ricovero1[inv1,"data_fine"] <- paziente[inv1,"data_nascita"] + 12
+    periodo_ricovero1[inv1,"data_inizio"] <- as.POSIXct(paziente[inv1,"data_nascita"] + 10)
+    periodo_ricovero1[inv1,"data_fine"] <- as.POSIXct(paziente[inv1,"data_nascita"] + 12)
   }
 
   #
@@ -178,7 +176,7 @@ gen_ricovero <- function(paziente) {
   vol_reale_ricovero <- length(paziente_ricoverato)
 
   # rimozione date fine ricovero future (ricoveri ancora in corso)
-  periodo_ricovero$data_fine[periodo_ricovero$data_fine > data_cutoff] <- NA
+  periodo_ricovero$data_fine[periodo_ricovero$data_fine > ts_cutoff] <- NA
 
   # aggregazione dati generati
   data.frame(
@@ -239,18 +237,18 @@ gen_principio_attivo <- function(farmaco) {
 # distribuzione di farmaci della Bribera Farmaceuticals (o RxCorrupt?) prescritti in media, confrontati con quelli di un particolare medico
 gen_terapia <- function(ricovero, medico, farmaco) {
   gen_periodo_terapia <- function(dati_terapia) {
-    # ts_inizio_ric < data_inizio < data_fine < ts_fine_ric
+    # inizio_ric < data_inizio < data_fine < fine_ric
     durata_ricovero <- as.numeric(difftime(
-      dati_terapia$ts_fine_ric,
-      dati_terapia$ts_inizio_ric,
+      dati_terapia$fine_ric,
+      dati_terapia$inizio_ric,
       units="secs"))
     durata_ricovero[is.na(durata_ricovero)] <- 10*24*3600
 
     offs_periodo <- random_intervals(
       nrow(dati_terapia), min=1, max=durata_ricovero, minsize=3600)
     data.frame(
-      data_inizio=dati_terapia$ts_inizio_ric + offs_periodo[,1],
-      data_fine=dati_terapia$ts_inizio_ric + offs_periodo[,2])
+      data_inizio=dati_terapia$inizio_ric + offs_periodo[,1],
+      data_fine=dati_terapia$inizio_ric + offs_periodo[,2])
   }
 
   medico_terapia <- sample(medico$cf, vol_terapia, replace=T)
@@ -271,12 +269,10 @@ gen_terapia <- function(ricovero, medico, farmaco) {
   ricovero_terapia = random_rows(ricovero, vol_terapia, replace=T)
   dati_terapia <- data.frame(
     ricovero=ricovero_terapia$codice_univoco,
-    ts_inizio_ric=as.POSIXct(ricovero_terapia$data_inizio),
-    ts_fine_ric=as.POSIXct(ricovero_terapia$data_fine+1)-1,
-    prescritta_da_medico=medico_terapia,
-    utilizza_farmaco=farmaco_terapia$nome_commerciale,
-    dose_giornaliera=farmaco_terapia$dose_giornaliera_raccomandata) # (utilizza sempre dose raccomandata)
-
+    inizio_ric=ricovero_terapia$data_inizio,
+    fine_ric=ricovero_terapia$data_fine,
+    utilizza_farmaco=farmaco_terapia$nome_commerciale
+  )
   # genera periodo terapia
   periodo_terapia <- best_effort_generator(dati_terapia,
     generator=gen_periodo_terapia,
@@ -286,30 +282,32 @@ gen_terapia <- function(ricovero, medico, farmaco) {
         ((t1$data_fine < t2$data_inizio) |
          (t1$data_inizio > t2$data_fine))
       }))
+
+  dati_terapia$prescritta_da_medico <- medico_terapia
+  # (semplificazione: utilizza sempre dose raccomandata)
+  dati_terapia$dose_giornaliera <- farmaco_terapia$dose_giornaliera_raccomandata
+
+  dati_terapia$data_inizio <- periodo_terapia$data_inizio
+  dati_terapia$data_fine <- periodo_terapia$data_fine
   dati_terapia <- dati_terapia[complete.cases(periodo_terapia),,drop=F]
-  periodo_terapia <- periodo_terapia[complete.cases(periodo_terapia),,drop=F]
 
   n_terapia <- nrow(dati_terapia)
-  data.frame(
-    ricovero = dati_terapia$ricovero,
-    tnumero = 1:n_terapia,
-    utilizza_farmaco = dati_terapia$utilizza_farmaco,
-    prescritta_da_medico = dati_terapia$prescritta_da_medico,
-    data_inizio = periodo_terapia$data_inizio,
-    data_fine = periodo_terapia$data_fine,
-    modalita_somministrazione = sample(lc_modalita_somministrazione(), n_terapia, replace=T),
-    dose_giornaliera = dati_terapia$dose_giornaliera
-  )
+  dati_terapia$modalita_somministrazione <- sample(lc_modalita_somministrazione(), n_terapia, replace=T)
+  dati_terapia$inizio_ric <- NULL
+  dati_terapia$fine_ric <- NULL
+  dati_terapia$tnumero <- 1:n_terapia
+
+  dati_terapia
 }
 
 gen_diagnosi <- function(ricovero, medico, terapia) {
   dati_ricovero <- data.frame(
     codice_univoco=ricovero$codice_univoco,
-    ts_inizio_ric=as.POSIXct(ricovero$data_inizio),
-    ts_fine_ric=as.POSIXct(ricovero$data_fine+1)-1)
+    inizio_ric=ricovero$data_inizio,
+    fine_ric=ricovero$data_fine)
   dati_ricovero$durata_ric <- as.numeric(difftime(
-    dati_ricovero$ts_fine_ric,
-    dati_ricovero$ts_inizio_ric,
+    dati_ricovero$fine_ric,
+    dati_ricovero$inizio_ric,
     units="secs"))
   dati_ricovero$durata_ric[is.na(dati_ricovero$durata_ric)] <- 10*24*3600
 
@@ -317,7 +315,7 @@ gen_diagnosi <- function(ricovero, medico, terapia) {
   # sempre in concomitanza con l'inizio del ricovero)
   diagnosi_iniziale <- data.frame(
     ricovero=dati_ricovero$codice_univoco,
-    time_stamp=dati_ricovero$ts_inizio_ric,
+    time_stamp=dati_ricovero$inizio_ric,
     effetto_di_terapia=NA)
 
   # genera diagnosi aggiuntive
@@ -326,7 +324,7 @@ gen_diagnosi <- function(ricovero, medico, terapia) {
   diagnosi_secondarie <- data.frame(
     index=1:vol_diagnosi_secondarie,
     ricovero=ric_diagnosi_secondarie$codice_univoco,
-    time_stamp=ric_diagnosi_secondarie$ts_inizio_ric + runif(
+    time_stamp=ric_diagnosi_secondarie$inizio_ric + runif(
       vol_diagnosi_secondarie, 1, ric_diagnosi_secondarie$durata_ric),
     effetto_di_terapia=NA)
 
