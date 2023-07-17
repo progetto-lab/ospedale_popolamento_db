@@ -50,15 +50,14 @@ random_rows <- function(df, count, replace=F, prob=NULL) {
 #   only one of the two rows will be marked as bad.
 inter_row_violations <- function(
     df_subj, df_attr, constraint,
-    df_head_subj=NULL, df_head_attr=NULL,
-    rows_filter=T)
+    df_head_subj=NULL, df_head_attr=NULL)
 {
   row_count <- nrow(df_subj)
   names_subj <- names(df_subj)
   names_attr <- names(df_attr)
 
   irc_index <- 1:row_count
-  df_complH <- cbind(irc_index, df_subj, df_attr)[rows_filter,]
+  df_complH <- cbind(irc_index, df_subj, df_attr)
 
   if (is.null(df_head_subj) || is.null(df_head_attr)) {
     df_complL <- df_complH
@@ -83,12 +82,12 @@ inter_row_violations <- function(
 
 }
 
-inter_row_constraint <- function(...) {
-  bad_index <- inter_row_violations(...)
+inter_row_constraint <- function(df_subj, ...) {
+  bad_index <- inter_row_violations(df_subj, ...)
 
   # return set of good indices
-  good <- rep(T, row_count)
-  good[bad_idex] <- F
+  good <- rep(T, nrow(df_subj))
+  good[bad_index] <- F
   good
 }
 
@@ -100,26 +99,22 @@ inter_row_constraint <- function(...) {
 constraint_none <- function(df_subj, df_attr) { T }
 
 constraint_intra <- function(check_intra) {
-  function(df_subj, df_attr, rows_filter, rows_okay) {
-    rows_okay[rows_filter] <- check_intra(df_subj[rows_filter,], df_attr[rows_filter,])
-    rows_okay
+  function(df_subj, df_attr) {
+    check_intra(df_subj, df_attr)
   }
 }
 
 constraint_inter <- function(check_inter, ...) {
-  function(df_subj, df_attr, rows_filter, rows_okay) {
-    violations <- inter_row_violations(df_subj, df_attr, check_inter, ..., rows_filter=rows_filter)
-    rows_okay[rows_filter] <- T
-    rows_okay[violations] <- F
-    rows_okay
+  function(df_subj, df_attr) {
+    inter_row_constraint(df_subj, df_attr, check_inter, ...)
   }
 }
 
 constraint_and <- function(c1, c2) {
-  function(df_subj, df_attr, rows_filter, rows_okay) {
-    rows_okay <- c1(df_subj, df_attr, rows_filter, rows_okay)
-    rows_okay <- c2(df_subj, df_attr, rows_filter & rows_okay, rows_okay)
-    rows_okay
+  function(df_subj, df_attr) {
+    good1 <- c1(df_subj, df_attr)
+    good2 <- c2(df_subj, df_attr)
+    good1 & good2
   }
 }
 
@@ -151,12 +146,13 @@ best_effort_generator <- function(
   # purge and regenerate rows violating the constraint
   for (i in 1:max_iter) {
     # TODO: this can still be somewhat optimized if necessary
-    bad_attr <- !constraint(df_subj, df_attr, bad_attr, !bad_attr)
+    bad_attr <- !constraint(df_subj, df_attr)
     if (!any(bad_attr)) break
 
     df_attr[bad_attr,] <- generator(df_subj[bad_attr,])
   }
 
+  bad_attr <- !constraint(df_subj, df_attr)
   df_attr[bad_attr,] <- NA
   df_attr
 }
