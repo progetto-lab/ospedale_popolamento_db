@@ -358,10 +358,21 @@ gen_diagnosi <- function(ricovero, medico, terapia) {
 
 gen_terapia_per <- function(ricovero, terapia, diagnosi) {
   terapia_per <- merge(terapia, diagnosi, by="ricovero")
-  terapia_per <- terapia_per[terapia_per$time_stamp < terapia_per$data_inizio,]
-  terapia_per <- random_rows(terapia_per,
-    min(nrow(terapia_per), vol_terapia_per))
 
+  # filtra solo diagnosi valide come giustificazione delle terapie
+  terapia_per <- terapia_per[terapia_per$time_stamp < terapia_per$data_inizio,]
+  terapia_per <- terapia_per[sample(nrow(terapia_per)),] # shuffle
+
+  # almeno una diagnosi per ogni terapia
+  dupl <- duplicated(terapia_per$tnumero)
+  terapia1 <- terapia_per[!dupl,]
+
+  # eliminazione casuale diagnosi aggiuntive giustificazione di terapia
+  # se si supera vol_terapia_per
+  terapiaOT <- terapia_per[dupl,]
+  terapiaM <- random_rows(terapiaOT, min(nrow(terapiaOT), vol_terapia_per - nrow(terapia1)))
+
+  terapia_per <- rbind(terapia1, terapiaM)
   data.frame(
     ricovero=terapia_per$ricovero,
     tnumero=terapia_per$tnumero,
