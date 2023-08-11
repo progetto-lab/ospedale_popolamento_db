@@ -234,7 +234,7 @@ gen_principio_attivo <- function(farmaco) {
     quantita=sample(1:10000, nrow(farmaco_pr), replace=T) / 100)
 }
 
-# distribuzione di farmaci della Bribera Farmaceuticals (o RxCorrupt?) prescritti in media, confrontati con quelli di un particolare medico
+# distribuzione di farmaci della RxCorrupt prescritti in media, confrontati con quelli di un particolare medico
 gen_terapia <- function(ricovero, medico, farmaco) {
   gen_periodo_terapia <- function(dati_terapia) {
     # inizio_ric < data_inizio < data_fine < fine_ric
@@ -257,8 +257,8 @@ gen_terapia <- function(ricovero, medico, farmaco) {
   # un numero molto ridotto di medici è coinvolto in un caso di corruzione
   compagnia_corr <- lc_nome_azienda()[1]
   corr_prob_prescr <- rep(1, nrow(farmaco))
-  corr_prob_prescr[farmaco$azienda_produttrice == compagnia_corr] <- 1000
-  medico_corr <- sample(medico$cf, 3)
+  corr_prob_prescr[farmaco$azienda_produttrice == compagnia_corr] <- cfg_corrupted_pratio
+  medico_corr <- sample(medico$cf, cfg_corrupted_count)
   for (m in medico_corr) {
     prescrizioni <- medico_terapia == m
     farmaco_terapia[prescrizioni,] <- random_rows(

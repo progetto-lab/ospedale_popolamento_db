@@ -6,6 +6,12 @@ source("volumes.R")
 
 sql_integer_max <- 2147483647
 
+
+# numero di medici corrotti (con maggiore probabilità di prescrivere)
+# farmaci (RxCorrupt) da inserire nella distribuzione statistica
+cfg_corrupted_count <- 2
+cfg_corrupted_pratio <- 4
+
 # simulazione tasso di crescita lineare del numero di pazienti,
 # determinato a partire da numero di ricoveri (tabella volumi),
 # ricoveri giornalieri attuali e ricoveri giornalieri iniziali
