@@ -3,6 +3,11 @@
 # populate the PostgresSQL database with the generated data
 #
 library("RPostgreSQL")
+
+# NOTE: data generation takes a substantial amount of
+# time (~5 mins) and is laughably inefficient!
+# As the code only has to be run once or twice,
+# further optimization was deemed unnecessary.
 source("generate.R")
 
 drv <- dbDriver("PostgreSQL")
